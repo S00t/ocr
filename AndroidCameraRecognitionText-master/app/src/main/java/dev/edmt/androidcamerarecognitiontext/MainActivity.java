@@ -24,6 +24,8 @@ import com.google.android.gms.vision.text.TextBlock;
 import com.google.android.gms.vision.text.TextRecognizer;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,8 +33,9 @@ import static dev.edmt.androidcamerarecognitiontext.R.id.text_label;
 
 public class MainActivity extends AppCompatActivity {
     Dialog dialog;
+    List<String> nips = new ArrayList<>();
     boolean showDialog = false;
-    public static final String NIP_REGEX = "(\\d{3}-\\d{2}-\\d{2}-\\d{3})|(\\d{3}-\\d{3}-\\d{2}-\\d{2})|(\\d{10})|(\\d{3}\\s{1}\\d{2,3}\\s{1}\\d{2,3}\\s{1}\\d{2,3})|(\\d{3}\\s{1}\\d{3}\\s{1}\\d{4})";
+    public static final String NIP_REGEX = "(((NIP)?:?\\u0020?(PL)?)\\u0020?\\d{3}\\u0020{1}\\d{2,3}\\u0020{1}\\d{2,3}\\u0020{1}\\d{2,3})|(((NIP)?:?\\u0020?(PL)?)\\u0020?\\d{10})|(((NIP)?:?\\u0020?(PL)?)\\u0020?\\d{3}\\u0020{1}\\d{3}\\u0020{1}\\d{4})";
     SurfaceView cameraView;
     TextView textView;
     TextView label;
@@ -63,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
         dialog = new Dialog(MainActivity.this);
         cameraView = (SurfaceView) findViewById(R.id.surface_view);
@@ -76,7 +80,6 @@ public class MainActivity extends AppCompatActivity {
 
             cameraSource = new CameraSource.Builder(getApplicationContext(), textRecognizer)
                     .setFacing(CameraSource.CAMERA_FACING_BACK)
-                    .setRequestedPreviewSize(1280, 720)
                     .setRequestedFps(2.0f)
                     .setAutoFocusEnabled(true)
                     .build();
@@ -136,10 +139,17 @@ public class MainActivity extends AppCompatActivity {
                                 Pattern p = Pattern.compile(NIP_REGEX);
 
                                 Matcher m = p.matcher(stringBuilder.toString());
-                                if(m.find()&& dialog!= null && !dialog.isShowing() ) {
-                                    label.setText("Wykryto :");
-                                    textView.setText(m.group());
-                                    ShowDialog(m.group());
+                                while(m.find()&& dialog!= null && !dialog.isShowing() && nips.size()<15 ) {
+
+                                    if(!nips.contains(m.group())){
+                                        nips.add(m.group() + "\n");
+                                    }
+//                                    label.setText("Wykryto :");
+//                                    textView.setText(m.group());
+//                                    ShowDialog(m.group());
+                                }
+                                if(nips!=null && nips.size()==15 && !dialog.isShowing()){
+                                    ShowDialog(nips);
                                 }
                             }
                         });
@@ -149,8 +159,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void ShowDialog(String group) {
-
+    private void ShowDialog(List<String> group) {
+        int count =1;
         // Create custom dialog object
         dialog = new Dialog(MainActivity.this);
         // Include dialog.xml file
@@ -160,7 +170,17 @@ public class MainActivity extends AppCompatActivity {
 
         // set values for custom dialog components - text, image and button
         TextView text = (TextView) dialog.findViewById(R.id.textDialog);
-        text.setText(group);
+        String finds = "";
+        for(String item : group){
+            item.replaceAll("\\u0020+","");
+            item.replaceAll("PL","");
+            item.replaceAll("NIP","");
+
+            finds+=count + ". " + " " +item;
+            count++;
+        }
+
+        text.setText(finds);
         dialog.show();
         if(dialog.isShowing()){
             showDialog = false;
@@ -176,6 +196,7 @@ public class MainActivity extends AppCompatActivity {
                 label.setText("Skanowanie ...");
                 textView.setText("");
                 showDialog = false;
+                nips.clear();
 
             }
         });
